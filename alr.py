@@ -1,4 +1,3 @@
-
 from argparse import ArgumentParser as ArgParser
 import glob, os
 import datetime
@@ -22,7 +21,6 @@ def find_log_files(dir):
 
 
 class LogParser:
-
     def __init__(self, path):
         self.path = path
         self.time_created = datetime.datetime.fromtimestamp(os.path.getatime(path))
@@ -73,7 +71,8 @@ class LogParser:
                 last_line = line
 
     def __add_event(self, date, time, server, event, player):
-        self.events = self.events.append({"date": date, "time": time, "server": server, "event": event, "player": player}, ignore_index=True)
+        self.events = self.events.append(
+            {"date": date, "time": time, "server": server, "event": event, "player": player}, ignore_index=True)
 
     def save(self, path):
         self.events.to_csv(path, sep=",")
@@ -132,6 +131,7 @@ def parser_args():
         args = options
 
     return args
+
 
 if __name__ == "__main__":
     args = parser_args()

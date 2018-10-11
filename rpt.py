@@ -1,3 +1,5 @@
+import os
+from argparse import ArgumentParser as ArgParser
 import pandas as pd
 import re
 import datetime
@@ -12,7 +14,6 @@ class LogReport:
 
     def rpt_playtime(self):
         df = pd.DataFrame(columns=pd.unique(self.log.transpose().server))
-        print(df)
         results = {}
         parser_state = {}
 
@@ -34,13 +35,16 @@ class LogReport:
         return results
 
     def read(self, file):
-        with open(file, "rb") as f:
-            df = pd.read_csv(f, sep=",")
-            return df
+        if os.path.isfile(file):
+            with open(file, "rb") as f:
+                df = pd.read_csv(f, sep=",")
+                return df
+        print("Input file '{0}' does not exist!".format(file))
+        exit(1)
 
     def sort(self, df):
-            df = df.sort_values(by=["date", "time"], ascending=False)
-            return df
+        df = df.sort_values(by=["date", "time"], ascending=False)
+        return df
 
     @staticmethod
     def get_time(line):
@@ -50,6 +54,65 @@ class LogReport:
             return time
         return None
 
+
+class CLI:
+    @staticmethod
+    def main(args, method_name=None):
+        """Maps CLI input to direct function calls
+        :param args: arguments to pass over
+        :param method_name: method to call (default None)
+        :return: result of invoked method
+        """
+
+        if method_name is None:
+            if args.command is None:
+                return 1
+            method_name = args.command
+        class_name = CLI
+
+        try:
+            method = getattr(class_name, method_name)
+        except AttributeError:
+            raise NotImplementedError(
+                "Class `{}` does not implement `{}`".format(class_name.__class__.__name__, method_name))
+        return method(args)
+
+    @staticmethod
+    def playtime(args):
+        rpt = LogReport(args.input_file)
+        rpt.rpt_playtime()
+
+
+def parser_args():
+    """Parses user input via CLI and provides help
+    :return: argument object
+    """
+    description = (
+        'Command line interface for extracting arma server log information'
+        '\n'
+        'https://github.com/Astavinu/ArmaLogsReader')
+
+    parser = ArgParser(description=description)
+    command = parser.add_subparsers(dest="command")
+    command.add_parser("playtime",
+                       help='extracts playtime information per server and player')
+    command.add_parser("missions",
+                       help='extracts mission information per server')
+
+    parser.add_argument("input_file", nargs="?", default="connects.csv",
+                        help="This is the file to be read")
+    parser.add_argument("-o", "--output-file", default="report.csv",
+                        help="Specifies which file to write to")
+
+    options = parser.parse_args()
+    if isinstance(options, tuple):
+        args = options[0]
+    else:
+        args = options
+
+    return args
+
+
 if __name__ == "__main__":
-    rpt = LogReport("connects.csv")
-    print(rpt.rpt_playtime())
+    args = parser_args()
+    CLI.main(args)
