@@ -63,16 +63,23 @@ class LogParser:
                 date = (self.time_created + self.current_days_offset).date()
                 time = LogParser.get_time(line)
                 server = LogParser.get_server_name(self.path)
+
+                id, mission = self.parse_mission(line)
+                if mission is not None:
+                    date_time = datetime.datetime.strptime("{}/{}".format(date, time), "%Y-%m-%d/%H:%M:%S")
+                    date_time - datetime.timedelta(minutes=5) # mission is started after first player joins
+                    self.__add_event(date_time.date(), date_time.time(), server, id, None, mission)
+
                 parsers = [self.parse_connect, self.parse_disconnect]
                 for p in parsers:
                     id, player = p(line)
                     if player is not None:
-                        self.__add_event(date, time, server, id, player)
+                        self.__add_event(date, time, server, id, player, None)
                 last_line = line
 
-    def __add_event(self, date, time, server, event, player):
+    def __add_event(self, date, time, server, event, player, mission):
         self.events = self.events.append(
-            {"date": date, "time": time, "server": server, "event": event, "player": player}, ignore_index=True)
+            {"date": date, "time": time, "server": server, "event": event, "player": player, "mission": mission}, ignore_index=True)
 
     def save(self, path):
         self.events.to_csv(path, sep=",")
@@ -87,10 +94,9 @@ class LogParser:
 
     @staticmethod
     def parse_connect(line):
-        if "BattlEye Server:" in line:
-            if " connected" in line:
+        if "Player" in line:
+            if " connected" in line and "BattlEye Server:" not in line:
                 line = line[9:]
-                line = line.strip("BattlEye Server: Player #")
                 split = line.split(" ")
                 player = ' '.join(split[1:-2])
                 return 1, player
@@ -98,13 +104,22 @@ class LogParser:
 
     @staticmethod
     def parse_disconnect(line):
-        if "BattlEye Server:" in line:
-            if " disconnected" in line:
+        if "Player" in line:
+            if " disconnected." in line and "BattlEye Server:" not in line:
                 line = line[9:]
-                line = line.strip("BattlEye Server: Player #")
                 split = line.split(" ")
                 player = ' '.join(split[1:-1])
                 return 2, player
+        return None, None
+
+    @staticmethod
+    def parse_mission(line):
+        if "Mission" in line:
+            if "read from bank." in line:
+                line = line[9:]
+                split = line.split(" ")
+                line = ' '.join(split[1:-3])
+                return 3, line
         return None, None
 
 
