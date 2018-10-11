@@ -1,18 +1,23 @@
+
+from argparse import ArgumentParser as ArgParser
 import glob, os
 import datetime
 import re
 import pandas as pd
 
 
-def find_arma_dir():
-    for dir in glob.glob("**/A3Server/", recursive=True):
-        dir = os.path.normpath(dir + os.path.pardir)
-        yield dir
+def find_arma_dir(root_list):
+    for root in root_list:
+        search = os.path.join(root, "**/addons")
+        for dir in glob.glob(search, recursive=True):
+            dir = os.path.normpath(os.path.dirname(dir))
+            yield dir
 
 
 def find_log_files(dir):
-    dir = os.path.normpath(dir+"/A3Server")
-    for file in glob.glob(dir+"/*"):
+    dir = os.path.join(dir, "**/*.log")
+    dir = os.path.normpath(dir)
+    for file in glob.glob(dir, recursive=True):
         yield file
 
 
@@ -104,16 +109,39 @@ class LogParser:
         return None, None
 
 
+def parser_args():
+    """Parses user input via CLI and provides help
+    :return: argument object
+    """
+    description = (
+        'Command line interface for extracting arma server log information'
+        '\n'
+        'https://github.com/Astavinu/ArmaLogsReader')
+
+    parser = ArgParser(description=description)
+
+    parser.add_argument("root", nargs="*", default=["."],
+                        help="This is the root directory of the log file search")
+    parser.add_argument("-o", "--output-file", default="connects.csv",
+                        help="Specifies which file to write to")
+
+    options = parser.parse_args()
+    if isinstance(options, tuple):
+        args = options[0]
+    else:
+        args = options
+
+    return args
+
 if __name__ == "__main__":
-    path_output = "connects.csv"
-    # LogParser.init_csv(path_output)
+    args = parser_args()
     df = pd.DataFrame(columns=["date", "time", "server", "event", "player"])
-    for folder in find_arma_dir():
+    for folder in find_arma_dir(args.root):
         for log in find_log_files(folder):
-            if ".rpt" not in log and os.path.isfile(log):
-                print(log)
-                p = LogParser(log)
-                p.parse()
-                df = pd.concat([df, p.events], ignore_index=True)
-    print(df)
-    df.to_csv(path_output)
+            p = LogParser(log)
+            p.parse()
+            df = pd.concat([df, p.events], ignore_index=True)
+            print("Events found: {0:4d} in {1}".format(len(p.events), log))
+
+    print("Writing %d Events to %s" % (len(df), args.output_file))
+    df.to_csv(args.output_file)
