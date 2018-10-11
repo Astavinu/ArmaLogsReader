@@ -13,25 +13,24 @@ class LogReport:
         pass
 
     def rpt_playtime(self):
-        df = pd.DataFrame(columns=pd.unique(self.log.transpose().server))
-        results = {}
-        parser_state = {}
+        df = self.log
+        df = df.sort_values(by=['date', 'player'])
+        data = []
 
-        for line in self.log:
-            c = self.log[line]
-            if c.event == 1:
-                last = parser_state.get(c.player)
-                if last is not None and last["event"] == 2:
-                    if results.get(c.player) is None:
-                        results.update({c.player: {}})
-                    duration = results.get(c.player).get(c.server)
-                    if duration is None:
-                        duration = datetime.timedelta(0)
-                    duration += LogReport.get_time(last["time"]) - LogReport.get_time(c.time)
-                    results.get(c.player).update({c.server: duration})
-                    df.update(pd.DataFrame({c.server: duration}, index=c.player))
-            parser_state.update({c.player: {"server": c.server, "event": c.event, "date": c.date, "time": c.time}})
+        for row in df.itertuples(index=True):
+            if getattr(row, "event") == 1:
+                last = row
+            if last is not None and getattr(row, "event") == 2:
+                if not any(d.get('player', None) == getattr(row, "player") for d in data):
+                    data.insert(0, {'player': getattr(row, "player"), 'duration': datetime.timedelta(0), 'sessions': 0})
+                duration = [d for d in data if d['player'] == getattr(row, "player")][0]['duration']
+                duration += LogReport.get_time(getattr(row, "time")) - LogReport.get_time(getattr(last, "time"))
+                [d for d in data if d['player'] == getattr(row, "player")][0]['duration'] = duration
+                [d for d in data if d['player'] == getattr(row, "player")][0]['sessions'] += 1
+        results = pd.DataFrame(data)
+        results = results.set_index('player').sort_values(by=['duration'], ascending=False)
 
+        print(results)
         return results
 
     def read(self, file):
