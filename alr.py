@@ -137,6 +137,7 @@ if __name__ == "__main__":
     args = parser_args()
     df = pd.DataFrame(columns=["date", "time", "server", "event", "player"])
     for folder in find_arma_dir(args.root):
+        print("Scanning {0}".format(folder))
         for log in find_log_files(folder):
             p = LogParser(log)
             p.parse()
