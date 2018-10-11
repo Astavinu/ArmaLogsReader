@@ -31,7 +31,6 @@ class LogReport:
         results = pd.DataFrame(data)
         results = results.set_index('player').sort_values(by=['duration'], ascending=False)
 
-        print(results)
         return results
 
     def read(self, file):
@@ -80,7 +79,8 @@ class CLI:
     @staticmethod
     def playtime(args):
         rpt = LogReport(args.input_file)
-        rpt.rpt_playtime()
+        df = rpt.rpt_playtime()
+        df.to_csv(args.output_file)
 
 
 def parser_args():
