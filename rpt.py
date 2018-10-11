@@ -14,7 +14,7 @@ class LogReport:
 
     def rpt_playtime(self):
         df = self.log.transpose()
-        df = df.sort_values(by=['player', 'time'])
+        df = df.sort_values(by=['date', 'time'])
         data = []
 
         for row in df.itertuples(index=True):
