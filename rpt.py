@@ -13,8 +13,8 @@ class LogReport:
         pass
 
     def rpt_playtime(self):
-        df = self.log
-        df = df.sort_values(by=['date', 'player'])
+        df = self.log.transpose()
+        df = df.sort_values(by=['player', 'time'])
         data = []
 
         for row in df.itertuples(index=True):
@@ -27,6 +27,7 @@ class LogReport:
                 duration += LogReport.get_time(getattr(row, "time")) - LogReport.get_time(getattr(last, "time"))
                 [d for d in data if d['player'] == getattr(row, "player")][0]['duration'] = duration
                 [d for d in data if d['player'] == getattr(row, "player")][0]['sessions'] += 1
+
         results = pd.DataFrame(data)
         results = results.set_index('player').sort_values(by=['duration'], ascending=False)
 
