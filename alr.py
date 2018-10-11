@@ -141,7 +141,8 @@ if __name__ == "__main__":
             p = LogParser(log)
             p.parse()
             df = pd.concat([df, p.events], ignore_index=True)
-            print("Events found: {0:4d} in {1}".format(len(p.events), log))
+            if len(p.events) > 0:
+                print("Events found: {0:4d} in {1}".format(len(p.events), log))
 
     print("Writing %d Events to %s" % (len(df), args.output_file))
     df.to_csv(args.output_file)
