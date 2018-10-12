@@ -16,14 +16,10 @@ class PlayerData:
         self.datetime = datetime.datetime(year=1990, month=1, day=1)
 
     def get_duration_string(self):
-        hours, remainder = divmod(self.duration.total_seconds(), 3600)
-        minutes, seconds = divmod(remainder, 60)
-
-        # Formatted only for hours and minutes as requested
-        return '{:02.0f}:{:02.0f}'.format(hours, minutes)
+        hours = self.duration.total_seconds() / 3600
+        return "{:.02f}".format(hours)
 
     def get_current_mission(self, missions):
-        missions = missions.sort_values(by=["datetime"], ascending=False)
         for m in missions.itertuples():
             if m.server is self.server and m.datetime < self.datetime:
                 return m.mission
@@ -126,19 +122,22 @@ class LogReport:
             if row.event == 3:
                 missions_list.insert(0, {'datetime': LogReport.get_time(row), 'mission': row.mission, 'server': row.server})
         missions = pd.DataFrame(missions_list)
+        missions = missions.sort_values(by=["datetime"], ascending=False)
 
         for row in df.itertuples(index=True):
+            if last is None:
+                last = row
+                continue
+
             if row.event == 1:
                 # if connect event
-                if last is None:
-                    last = row
-                    continue
-
-                if row.player is not last.player or last.mission is not row.mission:
+                player_data.datetime = LogReport.get_time(row)
+                if row.player is not last.player or last.server is not row.server or player_data.mission is not player_data.get_current_mission(missions):
                     # if new player: save
                     data.insert(0, {'player': player_data.player,
                                     'datetime': player_data.datetime,
-                                    'mission': player_data.get_current_mission(missions),
+                                    'server': player_data.server,
+                                    'mission': player_data.mission,
                                     'duration': player_data.get_duration_string(),
                                     'errors': player_data.errors,
                                     'sessions': player_data.sessions})
@@ -147,17 +146,18 @@ class LogReport:
                 if last.event == 1:
                     player_data.errors += 1
 
-            elif row.event == 2 and last.event == 1:
-                # if disconnect event after connect event
-                if row.player is last.player:
-                    player_data.player = row.player
-                    player_data.server = row.server
-                    player_data.datetime = LogReport.get_time(row)
-                    player_data.sessions += 1
-                    player_data.duration += LogReport.get_time(row) - LogReport.get_time(last)
-
-            if row.event == 3:
-                player_data.mission = row.mission
+            elif row.event == 2:
+                if last.event == 1:
+                    # if disconnect event after connect event
+                    if row.player is last.player:
+                        player_data.player = row.player
+                        player_data.server = row.server
+                        player_data.datetime = LogReport.get_time(row)
+                        player_data.sessions += 1
+                        player_data.duration += LogReport.get_time(row) - LogReport.get_time(last)
+                        player_data.mission = player_data.get_current_mission(missions)
+                else:
+                    player_data.errors += 1
 
             last = row
 
